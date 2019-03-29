@@ -101,10 +101,28 @@ void saveOutput(string path, int outputSize, int* outputThroughput, int outputSu
     outFile.close();
 }
 
-/// TODO: Calculate Sigma via dynamic programming.
+/// Calculate Sigma via dynamic programming.
 int** calculateSigma(ProblemInput input)
 {
-    return nullptr;
+    // Allocate space for rows of Sigma.
+    int** sigma = new int*[input.n];
+
+    // For each row, initialize base case and solve row.
+    for (int q = 0; q < input.n; q++)
+    {
+        // Allocate space for row.
+        sigma[q] = new int[q + 1];
+        // Base case of Sigma[q, q] = min(X[q], S[1]) (index adjusted).
+        sigma[q][q] = min(input.X[q], input.S[0]);
+
+        // Solve the rest of the row using Sigma[q, i] = Sigma[q - 1, i] + min(X[q], S[q - i]).
+        for (int i = q - 1; i >= 0; i--)
+        {
+            sigma[q][i] = sigma[q - 1][i] + min(input.X[q], input.S[q - i]);
+        }
+    }
+
+    return sigma;
 }
 
 /// Calculuate M (score array) via dynamic programming. 
@@ -127,11 +145,8 @@ SolutionNode* calculateScores(ProblemInput input, int** sigma)
             // Get base score, M[i - 1] (index corrected), where M[-1] = M[0] = 0
 			int score = (i <= 1) ? 0 : M[i - 2].score;
 
-            // Add up scores of days after reboot
-			for (int j = i; j <= q; j++)
-			{
-				score += min(input.X[j], input.S[j - i]);
-			}
+            // Add scores of days after reboot using precalculated matrix
+            score += sigma[q][i];
 
             // There is a new maximum score so record where it was found 
 			if (score > maxScore)
