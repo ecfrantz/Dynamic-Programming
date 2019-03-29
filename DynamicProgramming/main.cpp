@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -27,6 +28,12 @@ struct SolutionNode
     public: 
     int score;
     int parent;
+
+    SolutionNode()
+    {
+        this->score = 0;
+        this->parent = -1;
+    }
 
     SolutionNode(int score, int parent)
     {
@@ -75,29 +82,98 @@ ProblemInput loadInput(string path)
     return ProblemInput(n, X, S);
 }
 
+/// Saves an output to a file.
+void saveOutput(string path, int outputSize, int* outputThroughput, int outputSum)
+{
+    ofstream outFile(path);
+
+    // Write sum of throughputs.
+    outFile << outputSum << endl;
+
+    // Write the throughput of each day.
+    for (int i = 0; i < outputSize; i++)
+    {
+        outFile << outputThroughput[i] << ' ';
+    }
+
+    // Flush and close file.
+    outFile.flush();
+    outFile.close();
+}
+
 /// TODO: Calculate Sigma via dynamic programming.
 int** calculateSigma(ProblemInput input)
 {
-
+    return nullptr;
 }
 
-/// TODO: Calculuate M (score array) via dynamic programming. 
+/// Calculuate M (score array) via dynamic programming. 
 SolutionNode* calculateScores(ProblemInput input, int** sigma)
 {
+	SolutionNode* M = new SolutionNode[input.n];
 
+	for (int q = 0; q < input.n; q++)
+	{
+		int maxScore = 0;
+		int maxIndex = -1;
+		for (int i = 0; i <= q; i++)
+		{
+			int score = (i <= 1) ? 0 : M[i - 2].score;
+			for (int j = i; j <= q; j++)
+			{
+				score += min(input.X[j], input.S[j - i]);
+			}
+
+			if (score > maxScore)
+			{
+				maxScore = score;
+				maxIndex = i;
+			}
+		}
+
+		M[q].score = maxScore;
+		M[q].parent = maxIndex - 1;
+	}
+	return M;
+}
+
+int* calculateTraceback(ProblemInput input, SolutionNode* M)
+{
+	int* throughput = new int[input.n];
+
+	int i;
+	int j = input.n;
+	SolutionNode node;
+	while (j > 0)
+	{
+		node = M[--j];
+		i = node.parent;
+		for (; j > i; j--)
+		{
+			throughput[j] = min(input.X[j], input.S[j - i - 1]);
+		}
+		throughput[j] = 0;
+	}
+
+	return throughput;
 }
 
 
 int main(int argn, char** args)
 {
-    // Get input from file.
-    string inputPath = "input.txt";
-    ProblemInput input = loadInput(inputPath);
+	// Get input from file.
+	string inputPath = "input.txt";
+	ProblemInput input = loadInput(inputPath);
 
-    // Calculate solutions
-    int** sigma = calculateSigma(input);
-    SolutionNode* M = calculateScores(input, sigma);
+	// Calculate solutions
+	int** sigma = calculateSigma(input);
+	SolutionNode* M = calculateScores(input, sigma);
 
-    // Success!
-    return 0;
+	// Calculate and save traceback
+	string outputPath = "output.txt";
+	int* output = calculateTraceback(input, M);
+	saveOutput(outputPath, input.n, output, M[input.n - 1].score);
+
+	// Success!
+	return 0;
 }
